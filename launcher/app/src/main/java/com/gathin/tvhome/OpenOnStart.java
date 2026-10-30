@@ -41,10 +41,16 @@ final class OpenOnStart {
 
     /** Android has reached the internet through the active network (ACCESS_NETWORK_STATE). */
     static boolean online(Context ctx) {
-        ConnectivityManager cm = ctx.getSystemService(ConnectivityManager.class);
-        Network n = cm != null ? cm.getActiveNetwork() : null;
-        NetworkCapabilities caps = n != null ? cm.getNetworkCapabilities(n) : null;
-        return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        ConnectivityManager cm = Compat.service(ctx, ConnectivityManager.class, Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return false;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Network n = cm.getActiveNetwork();
+            NetworkCapabilities caps = n != null ? cm.getNetworkCapabilities(n) : null;
+            return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        }
+        // "Validated" arrived with API 23; before it a connected active network is the best answer.
+        android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+        return info != null && info.isConnected();
     }
 
     /** The app's TV entry point, or its phone one; null when it is uninstalled or disabled, so Home stays. */

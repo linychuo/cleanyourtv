@@ -1,15 +1,12 @@
 package com.gathin.tvhome;
 
-import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.os.PowerManager;
-import android.os.UserManager;
 import android.provider.Settings;
 
 import java.util.ArrayList;
@@ -35,8 +32,7 @@ final class GuardKeep {
     }
 
     static boolean offInStandby(Context context) {
-        UserManager users = context.getSystemService(UserManager.class);
-        if (users != null && !users.isUserUnlocked()) return false;
+        if (!Compat.isUserUnlocked(context)) return false;
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_OFF, false);
     }
 
@@ -50,9 +46,8 @@ final class GuardKeep {
         // that arrives after that, so the first screen-off does nothing (Philips 65PUS8102).
         HomeKeyService.applyStandbyOptIn();
         if (!offInStandby(context)) return;
-        if (context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
-                != PackageManager.PERMISSION_GRANTED) return;
-        PowerManager power = context.getSystemService(PowerManager.class);
+        if (!Compat.hasPermission(context, android.Manifest.permission.WRITE_SECURE_SETTINGS)) return;
+        PowerManager power = Compat.service(context, PowerManager.class, Context.POWER_SERVICE);
         // Still off: binding the helper again would sit on the power key. Wait for the screen.
         if (power != null && !power.isInteractive()) {
             watchScreenOn(context.getApplicationContext());
@@ -85,6 +80,8 @@ final class GuardKeep {
 
     /** Drops the service from the list and puts it back on the next SCREEN_ON. The process has to stay up. */
     static void stepOut(AccessibilityService service) {
+        // AccessibilityService.disableSelf arrived in Android 7.0; before it the helper stays bound.
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.N) return;
         watchScreenOn(service.getApplicationContext());
         service.disableSelf();
     }

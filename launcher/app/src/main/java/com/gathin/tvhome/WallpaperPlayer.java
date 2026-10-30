@@ -292,11 +292,16 @@ final class WallpaperPlayer {
             if (decoded == null) return null;
             if (dimColor != 0) new Canvas(decoded).drawColor(dimColor);
             // One copy in GPU memory instead of a software bitmap plus its texture; the decode stays off the UI
-            // thread for rotations, and Home's return no longer uploads 4-8 MB to the GPU.
-            Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
-            if (gpu == null) return decoded;
-            decoded.recycle();
-            return gpu;
+            // thread for rotations, and Home's return no longer uploads 4-8 MB to the GPU. Bitmap.Config.HARDWARE
+            // arrived in Android 8.0; before it the software bitmap is used as it is.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
+                if (gpu != null) {
+                    decoded.recycle();
+                    return gpu;
+                }
+            }
+            return decoded;
         } catch (Exception | OutOfMemoryError failure) {
             return null;
         }

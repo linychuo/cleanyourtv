@@ -5,7 +5,6 @@ import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.provider.Settings;
 
 import java.util.ArrayList;
@@ -35,8 +34,7 @@ final class ServiceRepair {
     }
 
     static void restore(Context context) {
-        if (context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS)
-                != PackageManager.PERMISSION_GRANTED) return;
+        if (!Compat.hasPermission(context, Manifest.permission.WRITE_SECURE_SETTINGS)) return;
         try {
             ContentResolver cr = context.getContentResolver();
             String list = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
