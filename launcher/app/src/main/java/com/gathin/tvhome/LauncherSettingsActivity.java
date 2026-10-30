@@ -34,6 +34,7 @@ public final class LauncherSettingsActivity extends Activity {
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
+    private TextView themeChoice;
     private TextView wallpaperChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
@@ -123,6 +124,8 @@ public final class LauncherSettingsActivity extends Activity {
             reverseRow(dockChoices);
             reverseRow(clockChoices);
         }
+        themeChoice = findViewById(R.id.themeChoice);
+        themeChoice.setOnClickListener(v -> showThemePicker());
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         animationsChoice = findViewById(R.id.animationsChoice);
@@ -183,6 +186,43 @@ public final class LauncherSettingsActivity extends Activity {
         LinearLayout row = (LinearLayout) views[0].getParent();
         row.removeAllViews();
         for (int i = views.length - 1; i >= 0; i--) row.addView(views[i]);
+    }
+
+    /** The theme folders copied to the TV, plus the built-in look; applying one rewrites the overlay. */
+    private void showThemePicker() {
+        File dir = Config.dir(this);
+        if (dir == null) {
+            Toast.makeText(this, R.string.not_available, Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<File> themes = ThemeStore.themes(dir);
+        String[] labels = new String[themes.size() + 1];
+        labels[0] = getString(R.string.theme_default);
+        for (int i = 0; i < themes.size(); i++) labels[i + 1] = themes.get(i).getName();
+        String current = ThemeStore.current(dir);
+        int checked = 0;
+        for (int i = 0; i < themes.size(); i++) {
+            if (themes.get(i).getName().equals(current)) checked = i + 1;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.theme_label)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    boolean applied = which == 0
+                            ? ThemeStore.reset(dir)
+                            : ThemeStore.apply(dir, themes.get(which - 1));
+                    if (!applied) {
+                        Toast.makeText(this, R.string.theme_failed, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    // Home reloads Config on resume and clears the on-TV choices the new revision invalidates.
+                    changed();
+                    Toast.makeText(this, getString(R.string.theme_applied, labels[which]),
+                            Toast.LENGTH_SHORT).show();
+                    refresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void showWallpaperPicker() {
@@ -313,6 +353,9 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(advancedEffects ? R.string.on : R.string.off)));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
+        String theme = ThemeStore.current(Config.dir(this));
+        themeChoice.setText(getString(R.string.theme_state,
+                theme == null ? getString(R.string.theme_default) : theme));
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         wallpaperChoice.setText(getString(R.string.wallpaper_state,
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)

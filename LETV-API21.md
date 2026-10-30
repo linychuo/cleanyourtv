@@ -102,8 +102,9 @@ tools/tv.py am start -n com.gathin.tvhome/.MainActivity
 
    `mAlways=true` 就是默认。
 
-2. 设置按钮点开的是“简洁桌面设置”。主题的 `config.json` 里 `launcher_settings_button: true`
-   会让设置按钮直接打开启动器设置；长按设置按钮始终打开启动器菜单。
+2. 设置按钮点开的是“简洁桌面设置”。本 fork 把 `config.xml` 里的 `launcher_settings_button` 默认改成了
+   `true`，所以设置按钮总能打开启动器设置（主题可以写 `launcher_settings_button: false` 改回去）；
+   长按设置按钮始终打开启动器菜单。
 
 ## 主题与配置
 
@@ -120,6 +121,33 @@ tools/tv.py am start -n com.gathin.tvhome/.MainActivity
 配置用 `tools/tv.py --push` 推。`tools/theme.sh` 在这台电视上推壁纸会失败：它依赖的 `base64` 和
 `md5sum` 在 Android 5 的 toolbox 里没有，只有 `md5`。壁纸单独用 `--push` 推，再用 `md5` 核对。
 配置内容变了以后，启动器会清掉电视上存下的布局选择（列数、壁纸等），以文件里的为准。
+
+## 在电视上切主题
+
+本 fork 在启动器设置里加了一行“主题”，遥控器就能换主题，不用 ADB。主题库要一次性推到电视上：
+
+```bash
+adb connect <tv ip>:5555
+adb shell mkdir -p /sdcard/Android/data/com.gathin.tvhome/files/themes
+adb push themes/. /sdcard/Android/data/com.gathin.tvhome/files/themes/
+```
+
+`themes/` 下的每个文件夹就是一个主题。不要用 `tools/tv.py --push` 推这个目录：它推目录时不递归，
+带 `wallpapers/` 的主题会失败；单个 `config.json`、单张壁纸用它没问题。
+
+遥控器路径：Home → 简洁桌面设置 → 主题 → 选一个。列表第一项“默认（内置）”会删掉覆盖层，回到
+`config.xml` 的内置外观。
+
+切换主题会改写电视上的 `config.json`、`wallpaper.jpg` 和 `wallpapers/`，并写两个文件：
+
+- `theme_name`：刚才选的主题文件夹名，用来在列表里打勾。
+- `theme_revision`：切换时间。它的值一变，启动器就会清掉电视端存的列数、行数等布局选择，让主题里的
+  值生效；之后在设置里改的列数照常保存。
+
+设置页的“主题：”是按 `config.json` 的内容和主题文件夹逐字节比对出来的。手动改过 `config.json`、
+或者主题文件夹改名以后，它可能显示“默认（内置）”，在列表里重选一次就恢复。
+
+删主题：从电视上的 `themes/` 里删掉对应文件夹即可，不用重装启动器。
 
 ## 这台电视的现状
 

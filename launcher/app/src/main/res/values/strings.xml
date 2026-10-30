@@ -58,6 +58,11 @@
     <string name="wallpaper_none">None</string>
     <string name="wallpaper_applied">Wallpaper changed</string>
     <string name="wallpaper_theme_default">Theme default</string>
+    <string name="theme_label">Theme</string>
+    <string name="theme_state">Theme: %1$s</string>
+    <string name="theme_default">Built-in default</string>
+    <string name="theme_applied">Theme applied: %1$s</string>
+    <string name="theme_failed">Could not change the theme</string>
     <string name="animations_state">Animations: %1$s</string>
     <string name="advanced_effects">Advanced effects</string>
     <string name="advanced_effects_state">Advanced effects: %1$s</string>
