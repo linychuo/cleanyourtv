@@ -290,6 +290,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The grid has been laid out and focused since the last resume; the card prompt waits for this. */
     private boolean tilesReady;
     private boolean settingsRecreationPending;
+    /** An intent asked for the launcher settings while Home was not resumed; onResume() opens it. */
+    private boolean pendingSettingsOpen;
     private Dialog cardPrompt;
     /** Set when a decision could not be saved: no more prompts until the next resume, instead of asking in a loop. */
     private boolean promptsPaused;
@@ -987,6 +989,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (ACTION_LAUNCHER_SETTINGS.equals(intent == null ? null : intent.getAction()) && !resumed) {
+            // Android 5 delivers a new intent while ActivityThread still has this activity marked paused,
+            // and the activity manager pauses us again the moment we start something. Starting the
+            // settings from onNewIntent then logs "Performing pause of activity that is not resumed" and
+            // calls onPause() a second time. Bring Home to the front first: that resumes us, and
+            // onResume() opens the settings once the framework has cleared the flag.
+            setIntent(new Intent(Intent.ACTION_MAIN));
+            pendingSettingsOpen = true;
+            startActivity(new Intent(this, MainActivity.class).addCategory(Intent.CATEGORY_HOME));
+            return;
+        }
         if (openLauncherSettingsIfAsked(intent)) return;
         if (openInputsIfAsked(intent)) return;
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
@@ -1032,6 +1045,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (Config.settingsChanged(settingsRevision, settingsRevision())) {
             recreate();
             return;
+        }
+        if (pendingSettingsOpen) {
+            // Asked for from a new intent that arrived while Home was not resumed (see onNewIntent).
+            pendingSettingsOpen = false;
+            startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
         }
         restartIdleClock();
         promptsPaused = false;
